@@ -68,4 +68,9 @@ return [
      *  This parameter is in priority for redirection)
      */
     'fail_url' => null,
+
+    /*
+    * URL api.enot.io
+    */
+    'api_url' => 'https://api.enot.io',
 ];

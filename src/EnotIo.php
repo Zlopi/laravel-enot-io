@@ -34,7 +34,14 @@ class EnotIo
     public function getPayUrl($amount, $order_id, $desc = null, $payment_method = null, $user_parameters = [])
     {
         // Url to init payment on EnotIo
-        $url = config('enotio.pay_url');
+        $url = config('enotio.api_url') . "/invoice/create";
+
+        // Header x-api-key
+        $headers = [
+            "accept: application/json",
+            "content-type: application/json",
+            "x-api-key: " . config('enotio.secret_key')
+        ]
 
         // Array of url query
         $query = [];
@@ -48,27 +55,27 @@ class EnotIo
         }
 
         // Project id (merchat id)
-        $query['m'] = config('enotio.project_id');
+        $query['shop_id'] = config('enotio.project_id');
 
         // Amount of payment
-        $query['oa'] = $amount;
+        $query['amount'] = $amount;
 
         // Order id
-        $query['o'] = $order_id;
+        $query['order_id'] = $order_id;
 
         // Payment description (optional)
         if (! is_null($desc)) {
-            $query['c'] = $desc;
+            $query['comment'] = $desc;
         }
 
         // Payment Method (optional)
         if (! is_null($payment_method)) {
-            $query['p'] = $payment_method;
+            $query['include_service'] = $payment_method;
         }
 
         // Payment currency
         if (! is_null(config('enotio.currency'))) {
-            $query['cr'] = config('enotio.currency');
+            $query['currency'] = config('enotio.currency');
         }
 
         // Payment success_url
@@ -81,14 +88,23 @@ class EnotIo
             $query['fail_url'] = config('enotio.fail_url');
         }
 
-        $query['s'] = $this->getFormSignature(
-            config('enotio.project_id'),
-            $amount,
-            config('enotio.secret_key'), $order_id
-        );
+        10.
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($query));
+        $response = curl_exec($ch);
+        curl_close($ch);
 
-        // Merge url ang query and return
-        return $url.'?'.http_build_query($query);
+        $invoice = json_decode($response, true);
+        
+        if ($invoice['status'] && $invoice['status'] == 200) {
+            return invoice['data']['url'];
+        }
+
+        return config('enotio.fail_url');
     }
 
     /**
@@ -111,12 +127,12 @@ class EnotIo
      * @param $order_id
      * @return string
      */
-    public function getFormSignature($project_id, $amount, $secret, $order_id)
+    /*public function getFormSignature($project_id, $amount, $secret, $order_id)
     {
         $hashStr = $project_id.':'.$amount.':'.$secret.':'.$order_id;
 
         return md5($hashStr);
-    }
+    }*/
 
     /**
      * @param $project_id
@@ -125,12 +141,12 @@ class EnotIo
      * @param $order_id
      * @return string
      */
-    public function getSignature($project_id, $amount, $secret, $order_id)
+    /*public function getSignature($project_id, $amount, $secret, $order_id)
     {
         $hashStr = $project_id.':'.$amount.':'.$secret.':'.$order_id;
 
         return md5($hashStr);
-    }
+    }*/
 
     /**
      * @param Request $request
@@ -140,7 +156,7 @@ class EnotIo
      */
     public function handle(Request $request)
     {
-        // Validate request from FreeKassa
+        // Validate request from EnotIO
         if (! $this->validateOrderFromHandle($request)) {
             return $this->responseError('validateOrderFromHandle');
         }
