@@ -16,10 +16,7 @@ trait ValidateTrait
         $validator = Validator::make($request->all(), [
             'merchant' => 'required',
             'amount' => 'required',
-            'intid' => 'required',
-            'merchant_id' => 'required',
-            'sign' => 'required',
-            'sign_2' => 'required',
+            'order_id' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -35,13 +32,11 @@ trait ValidateTrait
      */
     public function validateSignature(Request $request)
     {
-        $sign = $this->getSignature(config('enotio.project_id'), $request->input('amount'), config('enotio.secret_key_second'), $request->input('merchant_id'));
-
-        if ($request->input('sign_2') != $sign) {
-            return false;
-        }
-
-        return true;
+        $hookArr = json_decode($request, true);
+ksort($hookArr);
+        $hookJsonSorted = json_encode($hookArr);
+        $calculatedSignature = hash_hmac('sha256', $hookJsonSorted, config('enotio.secret_key'));
+        return hash_equals($headerSignature, $calculatedSignature);
     }
 
     /**
